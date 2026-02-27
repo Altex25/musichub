@@ -44,4 +44,14 @@ coverage/
 .tmp/
 
 # Optional (if you generate static files)
-# dist/
+# Generated dirs
+dist
+.nuxt
+.nuxt-*
+.output
+.gen
+
+# Node dependencies
+node_modules
+
+*.log
