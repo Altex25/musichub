@@ -42,6 +42,7 @@ const searchResults = ref<Album[]>([]);
 const isSearching = ref(false);
 let searchTimeout: string | number | NodeJS.Timeout | undefined;
 
+const selectedAlbum = useState<Album | null>('selected-album', () => null);
 
 const handleCoverError = (albumId: string) => {
   const album = searchResults.value.find((album) => album.id === albumId);
@@ -58,6 +59,16 @@ const handleSignOut = async () => {
   } finally {
     isSigningOut.value = false;
   }
+}
+
+const openAlbumDetails = async (album: Album) => {
+  searchQuery.value = '';
+
+  searchResults.value = [];
+  await navigateTo({
+    path: '/album',
+    query: {id: album.id}
+  });
 }
 
 const searchAlbums = async (query: string) => {
@@ -132,29 +143,35 @@ onBeforeUnmount(() => {
                   :key="album.id"
                   class="flex items-center gap-3 p-3 border-b border-default last:border-b-0"
               >
-                <!-- Album cover -->
-                <img
-                    v-if="album.coverUrl && !album.hasCoverError"
-                    :src="album.coverUrl"
-                    alt="Album cover"
-                    class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"
-                    loading="lazy"
-                    referrerpolicy="no-referrer"
-                    @error="handleCoverError(album.id)"
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-3 p-3 text-left hover:bg-gray-50"
+                    @click="openAlbumDetails(album)"
                 >
-                <div
-                    v-else
-                    class="w-12 h-12 rounded bg-gray-100 shrink-0 flex items-center justify-center text-gray-500"
-                >
-                  <UIcon name="i-lucide-music" class="w-5 h-5"/>
-                </div>
-                <!-- Album info -->
-                <div class="min-w-0">
-                  <p class="font-medium text-sm">{{ album.title }}</p>
-                  <p class="text-xs text-gray-500 truncate">
-                    {{ album.artist }}<span v-if="album.date"> • {{ album.date }}</span>
-                  </p>
-                </div>
+                  <!-- Album cover -->
+                  <img
+                      v-if="album.coverUrl && !album.hasCoverError"
+                      :src="album.coverUrl"
+                      alt="Album cover"
+                      class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                      @error="handleCoverError(album.id)"
+                  >
+                  <div
+                      v-else
+                      class="w-12 h-12 rounded bg-gray-100 shrink-0 flex items-center justify-center text-gray-500"
+                  >
+                    <UIcon name="i-lucide-music" class="w-5 h-5"/>
+                  </div>
+                  <!-- Album info -->
+                  <div class="min-w-0">
+                    <p class="font-medium text-sm">{{ album.title }}</p>
+                    <p class="text-xs text-gray-500 truncate">
+                      {{ album.artist }}<span v-if="album.date"> • {{ album.date }}</span>
+                    </p>
+                  </div>
+                </button>
               </li>
             </ul>
 
