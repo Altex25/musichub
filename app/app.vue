@@ -42,8 +42,6 @@ const searchResults = ref<Album[]>([]);
 const isSearching = ref(false);
 let searchTimeout: string | number | NodeJS.Timeout | undefined;
 
-const selectedAlbum = useState<Album | null>('selected-album', () => null);
-
 const handleCoverError = (albumId: string) => {
   const album = searchResults.value.find((album) => album.id === albumId);
   if (album) {
@@ -62,9 +60,22 @@ const handleSignOut = async () => {
 }
 
 const openAlbumDetails = async (album: Album) => {
-  searchQuery.value = '';
+  await $fetch('/api/musicbrainz/album', {
+    method: 'POST',
+    body: {
+      id: album.id,
+      source: 'MusicBrainz',
+      title: album.title,
+      artist: album.artist,
+      firstReleaseDate: album.date,
+      coverUrl: album.coverUrl,
+      raw: album
+    }
+  });
 
+  searchQuery.value = '';
   searchResults.value = [];
+
   await navigateTo({
     path: '/album',
     query: {id: album.id}
@@ -185,22 +196,36 @@ onBeforeUnmount(() => {
       <!-- User part -->
       <template #right>
         <div v-if="user" class="flex items-center gap-2">
-          <UAvatar
-              :alt="user.user_metadata.username"
-              size="sm"
-          />
+          <NuxtLink to="/profile">
+            <UAvatar
+                :alt="user.user_metadata.username"
+                class="cursor-pointer"
+                size="sm"
+                @click="navigateTo('/profile')"
+            />
+          </NuxtLink>
           <div class="flex flex-col">
             <span class="text-sm font-medium">{{ user.user_metadata.username }}</span>
             <span class="text-xs text-gray-500">{{ user.email }}</span>
           </div>
           <UButton
-              v-if="user"
               color="neutral"
               variant="ghost"
               :loading="isSigningOut"
               @click="handleSignOut"
           >
             <UIcon name="i-lucide-log-out" class="w-4 h-4"/>
+          </UButton>
+          <UColorModeButton/>
+        </div>
+
+        <div v-else class="flex items-center gap-2">
+          <UButton
+              color="primary"
+              variant="solid"
+              to="/login"
+          >
+            Se connecter
           </UButton>
           <UColorModeButton/>
         </div>

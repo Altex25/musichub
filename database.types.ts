@@ -108,7 +108,7 @@ export type Database = {
           created_at?: string
           id?: string
           rating: number
-          updated_at: string
+          updated_at?: string
           user_id: string
         }
         Update: {
