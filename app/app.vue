@@ -177,10 +177,10 @@ onBeforeUnmount(() => {
   <UApp>
     <UHeader>
       <template #left>
-        <div class="flex items-center gap-4">
+        <div class="flex w-full items-center gap-4">
           <NuxtLink
               to="/"
-              class="hidden text-sm font-semibold sm:inline-flex items-center gap-1 text-gray-800 dark:text-gray-100 hover:text-primary"
+              class="hidden cursor-pointer text-sm font-semibold sm:inline-flex items-center gap-1 text-gray-100 hover:text-emerald-300 transition-colors"
           >
             <UIcon name="i-lucide-music" class="h-4 w-4" />
             <span>MusicHub</span>
@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
                 >
                   <button
                       type="button"
-                      class="flex w-full items-center gap-3 p-3 text-left hover:bg-gray-50"
+                      class="flex cursor-pointer w-full items-center gap-3 p-3 text-left hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
                       @click="openAlbumDetails(album)"
                   >
                     <!-- Album cover -->

@@ -45,7 +45,7 @@
           <UIcon name="i-lucide-star" class="h-5 w-5" />
         </div>
         <p class="text-sm font-semibold">Rate what you love</p>
-        <p class="text-xs text-gray-500">
+        <p class="text-xs text-gray-300">
           Open an album page and leave a rating from 1 to 5 to build your profile.
         </p>
       </div>
@@ -60,6 +60,6 @@
         </p>
       </div>
     </div>
-  </div>
+    </div>
 </template>
 
