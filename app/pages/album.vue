@@ -55,7 +55,19 @@ const submitRating = async () => {
       }
     });
 
-    existingRating.value = selectedRating.value;
+    const newRating = selectedRating.value;
+    const wasAlreadyRated = existingRating.value !== null;
+
+    if (wasAlreadyRated && averageRating.value !== null) {
+      const totalSum = averageRating.value * ratingsCount.value - existingRating.value! + newRating;
+      averageRating.value = totalSum / ratingsCount.value;
+    } else {
+      const totalSum = (averageRating.value ?? 0) * ratingsCount.value + newRating;
+      ratingsCount.value += 1;
+      averageRating.value = totalSum / ratingsCount.value;
+    }
+
+    existingRating.value = newRating;
     ratingMessage.value = 'Rating successfully added.';
   } catch {
     ratingMessage.value = 'Error while adding the rate.';
@@ -95,16 +107,15 @@ if (user.value?.sub && albumId.value) {
 }
 
 if (albumId.value) {
-  const {data: aggregates} = await supabase
+  const {data: allRatings} = await supabase
       .from('ratings')
-      .select('avg_rating:avg(rating), ratings_count:count(*)')
+      .select('rating')
       .eq('album_id', albumId.value);
 
-  const row = (aggregates && aggregates[0]) as { avg_rating: number | null; ratings_count: number } | undefined;
-
-  if (row) {
-    averageRating.value = row.avg_rating;
-    ratingsCount.value = row.ratings_count;
+  if (allRatings && allRatings.length > 0) {
+    ratingsCount.value = allRatings.length;
+    const sum = allRatings.reduce((acc, r) => acc + (r.rating as number), 0);
+    averageRating.value = sum / ratingsCount.value;
   }
 }
 </script>
@@ -183,12 +194,10 @@ if (albumId.value) {
                       :key="value"
                       class="relative inline-flex h-4 w-4"
                   >
-                    <!-- base gray star -->
                     <UIcon
                         name="i-heroicons-star-20-solid"
                         class="h-4 w-4 text-gray-300 dark:text-gray-600"
                     />
-                    <!-- filled part for average -->
                     <UIcon
                         v-if="averageRating !== null && value - 1 < averageRating"
                         name="i-heroicons-star-20-solid"
@@ -210,9 +219,9 @@ if (albumId.value) {
           <!-- Rating section -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h2 class="text-base font-semibold">
+              <p class="text-xs uppercase tracking-wide text-gray-500">
                 Your rating
-              </h2>
+              </p>
             </div>
 
             <div class="flex flex-col gap-3">
@@ -227,12 +236,10 @@ if (albumId.value) {
                     @mouseleave="hoveredRating = null"
                 >
                   <span class="relative inline-flex h-7 w-7">
-                    <!-- base gray star -->
                     <UIcon
                         name="i-heroicons-star-20-solid"
                         class="h-7 w-7 text-gray-300 dark:text-gray-600"
                     />
-                    <!-- filled part based on hovered/selected rating -->
                     <UIcon
                         v-if="displayedRating > 0 && value - 1 < displayedRating"
                         name="i-heroicons-star-20-solid"
@@ -247,9 +254,6 @@ if (albumId.value) {
                 <span class="ml-2 text-sm text-gray-600">
                   <span v-if="selectedRating !== null">
                     {{ selectedRating.toFixed(1) }}/5
-                  </span>
-                  <span v-else class="italic">
-                    Select a number of stars (0.5 steps)
                   </span>
                 </span>
               </div>

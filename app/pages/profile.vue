@@ -13,11 +13,12 @@ type Rating = {
 
 const user = useSupabaseUser();
 const supabase = useSupabaseClient();
+const toast = useToast();
 const userId = computed(() => user.value?.sub);
 
 const {data: profile, error: profileError} = await useAsyncData('profile', async () => {
   if (!userId.value) {
-    await navigateTo('/login');
+    await navigateTo('/auth/login');
     return null;
   }
 
@@ -25,7 +26,7 @@ const {data: profile, error: profileError} = await useAsyncData('profile', async
       .from('profiles')
       .select('*')
       .eq('user_id', userId.value)
-      .single();
+      .maybeSingle();
 
   if (error) {
     console.error(error);
@@ -68,6 +69,9 @@ const updateRatingFromProfile = async (rating: Rating, newRating: number) => {
     return;
   }
 
+  const previousRating = rating.rating;
+  rating.rating = newRating;
+
   try {
     await $fetch('/api/rating', {
       method: 'POST',
@@ -76,10 +80,20 @@ const updateRatingFromProfile = async (rating: Rating, newRating: number) => {
         rating: newRating
       }
     });
-
-    rating.rating = newRating;
+    toast.add({
+      title: 'Rating updated',
+      description: `${rating.albums?.title} — ${newRating.toFixed(1)}/5`,
+      color: 'success',
+      icon: 'i-heroicons-star-20-solid'
+    });
   } catch (error) {
+    rating.rating = previousRating;
     console.error('Error updating rating from profile:', error);
+    toast.add({
+      title: 'Error updating rating',
+      color: 'error',
+      icon: 'i-lucide-alert-circle'
+    });
   }
 };
 
@@ -103,10 +117,10 @@ const handleStarLeaveProfile = (rating: Rating) => {
   hoveredRatings.value[rating.id] = null;
 };
 
-const handleStarClickProfile = async (rating: Rating, event: MouseEvent, value: number) => {
+const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number) => {
   const newRating = getStarValueFromEvent(event, value);
-  await updateRatingFromProfile(rating, newRating);
   hoveredRatings.value[rating.id] = newRating;
+  updateRatingFromProfile(rating, newRating);
 };
 </script>
 <template>
@@ -151,7 +165,7 @@ const handleStarClickProfile = async (rating: Rating, event: MouseEvent, value: 
           No ratings for the moment.
         </div>
 
-        <div v-else class="overflow-x-auto max-h-96 overflow-y-auto">
+        <div v-else class="overflow-x-auto max-h-96 overflow-y-auto flex-1 min-h-0">
           <table class="min-w-full border-collapse">
             <thead>
             <tr class="border-b border-default text-left">

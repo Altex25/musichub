@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
           <UButton
               color="primary"
               variant="solid"
-              to="/login"
+              to="/auth/login"
           >
             Se connecter
           </UButton>

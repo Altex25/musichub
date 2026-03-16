@@ -12,6 +12,7 @@ function hasApiErrorData(error: unknown): error is { data?: ApiErrorData } {
 
 const toast = useToast();
 const loading = ref(false);
+const supabase = useSupabaseClient();
 
 const fields: AuthFormField[] = [
   {
@@ -41,24 +42,37 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   loading.value = true;
 
   try {
-    const res = await $fetch<{ message: string }>('/api/auth/login', {
-      method: 'POST',
-      body: {
-        identifier: payload.data.identifier,
-        password: payload.data.password
-      }
+    let identifier = payload.data.identifier.trim();
+
+    if (!identifier.includes('@')) {
+      const res = await $fetch<{ email: string }>('/api/auth/resolve-username', {
+        method: 'POST',
+        body: {username: identifier}
+      });
+      identifier = res.email;
+    }
+
+    const {error} = await supabase.auth.signInWithPassword({
+      email: identifier,
+      password: payload.data.password
     });
 
+    if (error) {
+      throw error;
+    }
+
     toast.add({
-      title: res.message || 'You are now connected ',
+      title: 'You are now connected',
       color: 'success'
     });
 
     await navigateTo('/')
   } catch (err: unknown) {
-    const message = hasApiErrorData(err)
-        ? (err?.data?.statusMessage || 'Username/Email or password incorrect')
-        : 'Username/Email or password incorrect'
+    const defaultMessage = 'Username/email or password incorrect';
+
+    const message = err instanceof Error
+        ? err.message || defaultMessage
+        : defaultMessage;
 
     toast.add({
       title: message,
