@@ -62,6 +62,52 @@ const {data: ratings, error: ratingsError} = await useAsyncData('ratings', async
 
   return data as Rating[] | null;
 });
+
+const updateRatingFromProfile = async (rating: Rating, newRating: number) => {
+  if (!rating.albums?.id) {
+    return;
+  }
+
+  try {
+    await $fetch('/api/rating', {
+      method: 'POST',
+      body: {
+        albumId: rating.albums.id,
+        rating: newRating
+      }
+    });
+
+    rating.rating = newRating;
+  } catch (error) {
+    console.error('Error updating rating from profile:', error);
+  }
+};
+
+const hoveredRatings = ref<Record<string, number | null>>({});
+
+const getRowDisplayedRating = (rating: Rating) =>
+  hoveredRatings.value[rating.id] ?? rating.rating;
+
+const getStarValueFromEvent = (event: MouseEvent, value: number) => {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const isLeftHalf = event.clientX - rect.left < rect.width / 2;
+  return value - (isLeftHalf ? 0.5 : 0);
+};
+
+const handleStarHoverProfile = (rating: Rating, event: MouseEvent, value: number) => {
+  hoveredRatings.value[rating.id] = getStarValueFromEvent(event, value);
+};
+
+const handleStarLeaveProfile = (rating: Rating) => {
+  hoveredRatings.value[rating.id] = null;
+};
+
+const handleStarClickProfile = async (rating: Rating, event: MouseEvent, value: number) => {
+  const newRating = getStarValueFromEvent(event, value);
+  await updateRatingFromProfile(rating, newRating);
+  hoveredRatings.value[rating.id] = newRating;
+};
 </script>
 <template>
   <div class="mx-auto p-6">
@@ -113,26 +159,28 @@ const {data: ratings, error: ratingsError} = await useAsyncData('ratings', async
               <th class="px-4 py-3">Album</th>
               <th class="px-4 py-3">Artist</th>
               <th class="px-4 py-3">Rate</th>
-              <th class="px-4 py-3">Date</th>
+              <th class="px-4 py-3">Release date</th>
             </tr>
             </thead>
             <tbody>
             <tr
                 v-for="rating in ratings"
                 :key="rating.id"
-                class="border-b border-default"
+                class="border-b border-default hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
             >
               <td class="px-4 py-3">
                 <img
                     v-if="rating.albums?.cover_url"
                     :src="rating.albums.cover_url"
                     :alt="rating.albums.title"
-                    class="h-14 w-14 rounded object-cover"
+                    class="h-14 w-14 rounded object-cover cursor-pointer"
                     referrerpolicy="no-referrer"
+                    @click="navigateTo({ path: '/album', query: { id: rating.albums?.id } })"
                 >
                 <div
                     v-else
-                    class="flex h-14 w-14 items-center justify-center rounded bg-gray-100 text-gray-400"
+                    class="flex h-14 w-14 items-center justify-center rounded bg-gray-100 text-gray-400 cursor-pointer"
+                    @click="rating.albums?.id && navigateTo({ path: '/album', query: { id: rating.albums.id } })"
                 >
                   <UIcon name="i-lucide-music"/>
                 </div>
@@ -147,7 +195,29 @@ const {data: ratings, error: ratingsError} = await useAsyncData('ratings', async
               </td>
 
               <td class="px-4 py-3">
-                {{ rating.rating }}/5
+                <div class="flex items-center gap-1">
+                  <span
+                      v-for="value in 5"
+                      :key="value"
+                      class="relative inline-flex h-4 w-4 cursor-pointer"
+                      @click.stop="handleStarClickProfile(rating, $event as MouseEvent, value)"
+                      @mousemove.stop="handleStarHoverProfile(rating, $event as MouseEvent, value)"
+                      @mouseleave.stop="handleStarLeaveProfile(rating)"
+                  >
+                    <UIcon
+                        name="i-heroicons-star-20-solid"
+                        class="h-4 w-4 text-gray-300 dark:text-gray-600"
+                    />
+                    <UIcon
+                        v-if="getRowDisplayedRating(rating) > 0 && value - 1 < getRowDisplayedRating(rating)"
+                        name="i-heroicons-star-20-solid"
+                        class="absolute inset-0 h-4 w-4 text-amber-400"
+                        :style="value <= getRowDisplayedRating(rating)
+                          ? {}
+                          : { clipPath: 'inset(0 50% 0 0)' }"
+                    />
+                  </span>
+                </div>
               </td>
 
               <td class="px-4 py-3 text-sm text-gray-500">

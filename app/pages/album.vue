@@ -19,11 +19,13 @@ const albumId = computed(() => {
 const {data: album, pending, error} = await useFetch<AlbumDetails>(() => `/api/album/${albumId.value}`);
 
 const selectedRating = ref<number | null>(null);
+const hoveredRating = ref<number | null>(null);
 const isSavingRating = ref(false);
 const ratingMessage = ref('');
 const existingRating = ref<number | null>(null);
 const averageRating = ref<number | null>(null);
 const ratingsCount = ref<number>(0);
+const displayedRating = computed(() => hoveredRating.value ?? selectedRating.value ?? 0);
 
 const submitRating = async () => {
   if (!user.value) {
@@ -60,6 +62,21 @@ const submitRating = async () => {
   } finally {
     isSavingRating.value = false;
   }
+};
+
+const getStarValue = (event: MouseEvent, value: number) => {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const isLeftHalf = event.clientX - rect.left < rect.width / 2;
+  return value - (isLeftHalf ? 0.5 : 0);
+};
+
+const handleStarHover = (event: MouseEvent, value: number) => {
+  hoveredRating.value = getStarValue(event, value);
+};
+
+const handleStarClick = (event: MouseEvent, value: number) => {
+  selectedRating.value = getStarValue(event, value);
 };
 
 if (user.value?.sub && albumId.value) {
@@ -161,10 +178,26 @@ if (albumId.value) {
               </p>
               <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <div class="flex items-center gap-0.5">
-                  <UIcon
-                      name="i-heroicons-star-20-solid"
-                      class="h-4 w-4 text-amber-400"
-                  />
+                  <span
+                      v-for="value in 5"
+                      :key="value"
+                      class="relative inline-flex h-4 w-4"
+                  >
+                    <!-- base gray star -->
+                    <UIcon
+                        name="i-heroicons-star-20-solid"
+                        class="h-4 w-4 text-gray-300 dark:text-gray-600"
+                    />
+                    <!-- filled part for average -->
+                    <UIcon
+                        v-if="averageRating !== null && value - 1 < averageRating"
+                        name="i-heroicons-star-20-solid"
+                        class="absolute inset-0 h-4 w-4 text-amber-400"
+                        :style="value <= averageRating
+                          ? {}
+                          : { clipPath: 'inset(0 50% 0 0)' }"
+                    />
+                  </span>
                   <span class="font-semibold">{{ averageRating.toFixed(1) }}/5</span>
                 </div>
                 <span class="text-xs text-gray-500">
@@ -188,22 +221,35 @@ if (albumId.value) {
                     v-for="value in 5"
                     :key="value"
                     type="button"
-                    class="p-1.5"
-                    @click="selectedRating = value"
+                    class="p-1.5 cursor-pointer"
+                    @click="handleStarClick($event as MouseEvent, value)"
+                    @mousemove="handleStarHover($event as MouseEvent, value)"
+                    @mouseleave="hoveredRating = null"
                 >
-                  <UIcon
-                      name="i-heroicons-star-20-solid"
-                      class="h-7 w-7 transition-colors"
-                      :class="value <= (selectedRating || 0) ? 'text-amber-400' : 'text-gray-300 dark:text-gray-600'"
-                  />
+                  <span class="relative inline-flex h-7 w-7">
+                    <!-- base gray star -->
+                    <UIcon
+                        name="i-heroicons-star-20-solid"
+                        class="h-7 w-7 text-gray-300 dark:text-gray-600"
+                    />
+                    <!-- filled part based on hovered/selected rating -->
+                    <UIcon
+                        v-if="displayedRating > 0 && value - 1 < displayedRating"
+                        name="i-heroicons-star-20-solid"
+                        class="absolute inset-0 h-7 w-7 text-amber-400 transition-colors"
+                        :style="value <= displayedRating
+                          ? {}
+                          : { clipPath: 'inset(0 50% 0 0)' }"
+                    />
+                  </span>
                 </button>
 
                 <span class="ml-2 text-sm text-gray-600">
-                  <span v-if="selectedRating">
-                    {{ selectedRating }}/5
+                  <span v-if="selectedRating !== null">
+                    {{ selectedRating.toFixed(1) }}/5
                   </span>
                   <span v-else class="italic">
-                    Select a number of stars
+                    Select a number of stars (0.5 steps)
                   </span>
                 </span>
               </div>

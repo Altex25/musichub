@@ -121,7 +121,7 @@ watch(searchQuery, () => {
             v-for="album in albums"
             :key="album.id"
             type="button"
-            class="flex cursor-pointer items-center gap-3 rounded-lg border border-default bg-white p-3 text-left shadow-sm hover:bg-gray-50 dark:bg-gray-900"
+            class="flex cursor-pointer items-center gap-3 rounded-lg border border-default bg-white p-3 text-left shadow-sm hover:bg-emerald-50 dark:bg-gray-900 dark:hover:bg-emerald-900/30 transition-colors"
             @click="openAlbumDetails(album)"
         >
           <!-- Album cover -->
