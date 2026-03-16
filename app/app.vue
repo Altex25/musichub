@@ -35,18 +35,38 @@ useSeoMeta({
 
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
+const route = useRoute()
 const isSigningOut = ref(false);
 
 const searchQuery = ref('');
 const searchResults = ref<Album[]>([]);
 const isSearching = ref(false);
+const showSuggestions = ref(true);
 let searchTimeout: string | number | NodeJS.Timeout | undefined;
+
+const isSearchPage = computed(() => route.path === '/search');
 
 const handleCoverError = (albumId: string) => {
   const album = searchResults.value.find((album) => album.id === albumId);
   if (album) {
     album.hasCoverError = true;
   }
+};
+
+const handleSearchSubmit = async () => {
+  const query = searchQuery.value.trim();
+
+  if (!query) {
+    return;
+  }
+
+  showSuggestions.value = false;
+  searchResults.value = [];
+
+  await navigateTo({
+    path: '/search',
+    query: {q: query}
+  });
 };
 
 const handleSignOut = async () => {
@@ -59,6 +79,29 @@ const handleSignOut = async () => {
   }
 }
 
+const normalizeFirstReleaseDate = (date?: string) => {
+  if (!date) {
+    return undefined;
+  }
+
+  const trimmedDate = date.trim();
+
+  if (/^\d{4}$/.test(trimmedDate)) {
+    return `${trimmedDate}-01-01`;
+  }
+
+  if (/^\d{4}-\d{2}$/.test(trimmedDate)) {
+    return `${trimmedDate}-01`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+    return trimmedDate;
+  }
+
+  return trimmedDate || undefined;
+};
+
+
 const openAlbumDetails = async (album: Album) => {
   await $fetch('/api/musicbrainz/album', {
     method: 'POST',
@@ -67,7 +110,7 @@ const openAlbumDetails = async (album: Album) => {
       source: 'MusicBrainz',
       title: album.title,
       artist: album.artist,
-      firstReleaseDate: album.date,
+      firstReleaseDate: normalizeFirstReleaseDate(album.date),
       coverUrl: album.coverUrl,
       raw: album
     }
@@ -103,9 +146,15 @@ const searchAlbums = async (query: string) => {
   } finally {
     isSearching.value = false;
   }
-}
+};
+
+const clearSearch = () => {
+  showSuggestions.value = false;
+};
 
 watch(searchQuery, (value) => {
+  showSuggestions.value = true;
+
   if (searchTimeout) {
     clearTimeout(searchTimeout);
   }
@@ -127,67 +176,79 @@ onBeforeUnmount(() => {
 <template>
   <UApp>
     <UHeader>
-      <!-- User part -->
       <template #left>
-        <div class="w-full max-w-xs relative">
-          <UInput
-              v-model="searchQuery"
-              class="w-full"
-              icon="i-lucide-search"
-              placeholder="Search for an album..."
-              autocomplete="off"
-          />
-          <div
-              v-if="searchQuery.trim().length > 2 "
-              class="absolute z-50 mt-2 w-full rounded-md border border-default bg-default shadow-lg"
+        <div class="flex items-center gap-4">
+          <NuxtLink
+              to="/"
+              class="hidden text-sm font-semibold sm:inline-flex items-center gap-1 text-gray-800 dark:text-gray-100 hover:text-primary"
           >
+            <UIcon name="i-lucide-music" class="h-4 w-4" />
+            <span>MusicHub</span>
+          </NuxtLink>
+
+          <div class="w-full max-w-xs relative">
+            <form @submit.prevent="handleSearchSubmit">
+              <UInput
+                  v-model="searchQuery"
+                  class="w-full"
+                  icon="i-lucide-search"
+                  placeholder="Search for an album..."
+                  autocomplete="off"
+                  @keydown.esc="clearSearch"
+              />
+            </form>
             <div
-                v-if="isSearching"
-                class="p-3 text-sm text-gray-500"
+                v-if="showSuggestions && searchQuery.trim().length > 2"
+                class="absolute z-50 mt-2 w-full rounded-md border border-default bg-default shadow-lg"
             >
-              Searching...
-            </div>
-
-            <ul v-else-if="searchResults.length" class="overflow-auto">
-              <li
-                  v-for="album in searchResults"
-                  :key="album.id"
-                  class="flex items-center gap-3 p-3 border-b border-default last:border-b-0"
+              <div
+                  v-if="isSearching"
+                  class="p-3 text-sm text-gray-500"
               >
-                <button
-                    type="button"
-                    class="flex w-full items-center gap-3 p-3 text-left hover:bg-gray-50"
-                    @click="openAlbumDetails(album)"
-                >
-                  <!-- Album cover -->
-                  <img
-                      v-if="album.coverUrl && !album.hasCoverError"
-                      :src="album.coverUrl"
-                      alt="Album cover"
-                      class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"
-                      loading="lazy"
-                      referrerpolicy="no-referrer"
-                      @error="handleCoverError(album.id)"
-                  >
-                  <div
-                      v-else
-                      class="w-12 h-12 rounded bg-gray-100 shrink-0 flex items-center justify-center text-gray-500"
-                  >
-                    <UIcon name="i-lucide-music" class="w-5 h-5"/>
-                  </div>
-                  <!-- Album info -->
-                  <div class="min-w-0">
-                    <p class="font-medium text-sm">{{ album.title }}</p>
-                    <p class="text-xs text-gray-500 truncate">
-                      {{ album.artist }}<span v-if="album.date"> • {{ album.date }}</span>
-                    </p>
-                  </div>
-                </button>
-              </li>
-            </ul>
+                Searching...
+              </div>
 
-            <div v-else class="p-3 text-sm text-gray-500">
-              No album found for "{{ searchQuery }}"
+              <ul v-else-if="searchResults.length" class="overflow-auto">
+                <li
+                    v-for="album in searchResults.slice(0, 3)"
+                    :key="album.id"
+                    class="flex items-center gap-3 p-3 border-b border-default last:border-b-0"
+                >
+                  <button
+                      type="button"
+                      class="flex w-full items-center gap-3 p-3 text-left hover:bg-gray-50"
+                      @click="openAlbumDetails(album)"
+                  >
+                    <!-- Album cover -->
+                    <img
+                        v-if="album.coverUrl && !album.hasCoverError"
+                        :src="album.coverUrl"
+                        alt="Album cover"
+                        class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                        @error="handleCoverError(album.id)"
+                    >
+                    <div
+                        v-else
+                        class="w-12 h-12 rounded bg-gray-100 shrink-0 flex items-center justify-center text-gray-500"
+                    >
+                      <UIcon name="i-lucide-music" class="w-5 h-5"/>
+                    </div>
+                    <!-- Album info -->
+                    <div class="min-w-0">
+                      <p class="font-medium text-sm">{{ album.title }}</p>
+                      <p class="text-xs text-gray-500 truncate">
+                        {{ album.artist }}<span v-if="album.date"> • {{ album.date }}</span>
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              </ul>
+
+              <div v-else class="p-3 text-sm text-gray-500">
+                No album found for "{{ searchQuery }}"
+              </div>
             </div>
           </div>
         </div>
@@ -198,14 +259,14 @@ onBeforeUnmount(() => {
         <div v-if="user" class="flex items-center gap-2">
           <NuxtLink to="/profile">
             <UAvatar
-                :alt="user.user_metadata.username"
+                :alt="user.user_metadata?.username"
                 class="cursor-pointer"
                 size="sm"
                 @click="navigateTo('/profile')"
             />
           </NuxtLink>
           <div class="flex flex-col">
-            <span class="text-sm font-medium">{{ user.user_metadata.username }}</span>
+            <span class="text-sm font-medium">{{ user.user_metadata?.username }}</span>
             <span class="text-xs text-gray-500">{{ user.email }}</span>
           </div>
           <UButton
@@ -237,9 +298,5 @@ onBeforeUnmount(() => {
     </UMain>
 
     <USeparator icon="i-simple-icons-nuxtdotjs"/>
-
-    <UFooter>
-      footer
-    </UFooter>
   </UApp>
 </template>

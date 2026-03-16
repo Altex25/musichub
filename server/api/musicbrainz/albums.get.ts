@@ -20,15 +20,21 @@ type AlbumResult = {
 
 export default defineEventHandler(async (event) => {
     const query = String(getQuery(event).q ?? '').trim();
+    const page = Number(getQuery(event).page ?? 1) || 1;
 
     if (query.length < 3) {
         return {albums: [] as AlbumResult[]};
     }
 
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
     const url = new URL('https://musicbrainz.org/ws/2/release/');
-    url.searchParams.append('query', query);
+    const mbQuery = `release:(${query}) AND status:official AND primarytype:album`;
+    url.searchParams.append('query', mbQuery);
     url.searchParams.append('fmt', 'json');
-    url.searchParams.append('limit', '3');
+    url.searchParams.append('limit', String(limit));
+    url.searchParams.append('offset', String(offset));
 
     const data = await $fetch<MusicBrainzResponse>(url.toString(), {
         headers: {
@@ -37,8 +43,9 @@ export default defineEventHandler(async (event) => {
     });
     const releases = data.releases ?? [];
 
-    const albums = await Promise.all(
-        releases.map(async (release): Promise<AlbumResult> => {
+    // Map to intermediate structure with a simple relevance score
+    const albumsWithScore = await Promise.all(
+        releases.map(async (release) => {
             const coverUrl = `https://coverartarchive.org/release/${release.id}/front-250`;
 
             let finalCoverUrl: string | null = null;
@@ -55,28 +62,41 @@ export default defineEventHandler(async (event) => {
                 finalCoverUrl = null;
             }
 
-            return {
-                id: release.id,
-                title: release.title,
-                artist: release['artist-credit']
-                    ?.map((a) => a.name)
-                    .filter(Boolean)
-                    .join(', ') || 'Unknown artist',
-                date: release.date,
-                coverUrl: finalCoverUrl ?? ''
+            const title = release.title ?? '';
+            const normalizedTitle = title.toLowerCase();
+            const normalizedQuery = query.toLowerCase();
+
+            let score = 0;
+            if (normalizedTitle === normalizedQuery) {
+                score += 3;
+            } else if (normalizedTitle.includes(normalizedQuery)) {
+                score += 1;
             }
-        }));
 
+            if (finalCoverUrl) {
+                score += 1;
+            }
 
-    // const albums = (data.releases ?? []).map((album) => ({
-    //     id: album.id,
-    //     title: album.title,
-    //     artist: album['artist-credit']
-    //         ?.map((a) => a.name)
-    //         .filter(Boolean)
-    //         .join(', ') || 'Unknown artist',
-    //     date: album.date
-    // }));
+            return {
+                score,
+                album: {
+                    id: release.id,
+                    title,
+                    artist: release['artist-credit']
+                        ?.map((a) => a.name)
+                        .filter(Boolean)
+                        .join(', ') || 'Unknown artist',
+                    date: release.date,
+                    coverUrl: finalCoverUrl ?? ''
+                } as AlbumResult
+            };
+        })
+    );
+
+    // Sort by score (highest first) while preserving original order for ties
+    albumsWithScore.sort((a, b) => b.score - a.score);
+
+    const albums = albumsWithScore.map((entry) => entry.album);
 
     return {albums};
 });

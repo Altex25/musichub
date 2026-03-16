@@ -55,6 +55,7 @@ const submitRating = async () => {
   } catch {
     ratingMessage.value = 'Error while adding the rate.';
   } finally {
+    selectedRating.value = null;
     isSavingRating.value = false;
   }
 };
