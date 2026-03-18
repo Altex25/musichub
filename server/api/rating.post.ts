@@ -5,14 +5,19 @@ export default defineEventHandler(async (event) => {
     const user = await serverSupabaseUser(event)
     const body = await readBody(event)
 
-    const albumId = typeof body.albumId === 'string' ? body.albumId : ''
+    if (!user) {
+        throw createError({statusCode: 401, statusMessage: 'Unauthorized'})
+    }
+
+    const albumId = typeof body.albumId === 'string' ? body.albumId.trim() : ''
     const rating = Number(body.rating)
 
-    if (!user) {
-        throw createError({
-            statusCode: 401,
-            statusMessage: 'Unauthorized'
-        })
+    if (!albumId) {
+        throw createError({statusCode: 400, statusMessage: 'Missing albumId'})
+    }
+
+    if (isNaN(rating) || rating < 0.5 || rating > 5) {
+        throw createError({statusCode: 400, statusMessage: 'Rating must be between 0.5 and 5'})
     }
 
     const supabase = await serverSupabaseClient<Database>(event)

@@ -5,6 +5,8 @@ type AlbumDetails = {
   artist: string;
   first_release_date?: string;
   cover_url?: string;
+  rating_avg?: number | null;
+  rating_count?: number;
 };
 
 const route = useRoute();
@@ -26,6 +28,13 @@ const existingRating = ref<number | null>(null);
 const averageRating = ref<number | null>(null);
 const ratingsCount = ref<number>(0);
 const displayedRating = computed(() => hoveredRating.value ?? selectedRating.value ?? 0);
+
+const getAverageStarStyle = (value: number, avg: number) => {
+  if (avg >= value) return {};
+  const fraction = avg - (value - 1);
+  const clipPct = Math.round((1 - fraction) * 100);
+  return {clipPath: `inset(0 ${clipPct}% 0 0)`};
+};
 
 const submitRating = async () => {
   if (!user.value) {
@@ -69,8 +78,10 @@ const submitRating = async () => {
 
     existingRating.value = newRating;
     ratingMessage.value = 'Rating successfully added.';
+    setTimeout(() => { ratingMessage.value = ''; }, 3000);
   } catch {
     ratingMessage.value = 'Error while adding the rate.';
+    setTimeout(() => { ratingMessage.value = ''; }, 4000);
   } finally {
     isSavingRating.value = false;
   }
@@ -91,6 +102,13 @@ const handleStarClick = (event: MouseEvent, value: number) => {
   selectedRating.value = hoveredRating.value ?? getStarValue(event, value);
 };
 
+// Initialise community stats from API response (server-side, bypasses RLS)
+if (album.value?.rating_avg != null && (album.value.rating_count ?? 0) > 0) {
+  averageRating.value = album.value.rating_avg;
+  ratingsCount.value = album.value.rating_count ?? 0;
+}
+
+// Fetch the current user's existing rating
 if (user.value?.sub && albumId.value) {
   const {data: existingRatings} = await supabase
       .from('ratings')
@@ -103,19 +121,6 @@ if (user.value?.sub && albumId.value) {
   if (existingRatings && existingRatings.length > 0 && typeof existingRatings[0]?.rating === 'number') {
     existingRating.value = existingRatings[0].rating as number;
     selectedRating.value = existingRating.value;
-  }
-}
-
-if (albumId.value) {
-  const {data: allRatings} = await supabase
-      .from('ratings')
-      .select('rating')
-      .eq('album_id', albumId.value);
-
-  if (allRatings && allRatings.length > 0) {
-    ratingsCount.value = allRatings.length;
-    const sum = allRatings.reduce((acc, r) => acc + (r.rating as number), 0);
-    averageRating.value = sum / ratingsCount.value;
   }
 }
 </script>
@@ -206,7 +211,7 @@ if (albumId.value) {
                         v-if="averageRating !== null && value - 1 < averageRating"
                         name="i-heroicons-star-20-solid"
                         class="absolute inset-0 h-5 w-5 text-amber-400"
-                        :style="value <= averageRating ? {} : { clipPath: 'inset(0 50% 0 0)' }"
+                        :style="getAverageStarStyle(value, averageRating)"
                     />
                   </span>
                 </div>

@@ -2,12 +2,13 @@
 import * as z from "zod";
 import type {AuthFormField, FormSubmitEvent} from "#ui/types";
 
-type ApiErrorData = {
-  statusMessage?: string
+type FetchErrorShape = {
+  status?: number;
+  data?: { statusMessage?: string };
 }
 
-function hasApiErrorData(error: unknown): error is { data?: ApiErrorData } {
-  return typeof error === 'object' && error !== null && 'data' in error
+function isFetchError(err: unknown): err is FetchErrorShape {
+  return typeof err === 'object' && err !== null && ('status' in err || 'data' in err);
 }
 
 const toast = useToast();
@@ -79,13 +80,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
     await navigateTo('/auth/login')
   } catch (err: unknown) {
-    const message = hasApiErrorData(err)
-        ? (err?.data?.statusMessage || 'Error while creating account')
-        : 'Error while creating account'
+    const status = isFetchError(err) ? err.status : undefined;
 
+    const message = status === 409
+        ? (isFetchError(err) && err.data?.statusMessage) || 'This username or email is already taken'
+        : 'An error occurred. Please try again.';
 
     toast.add({
-      title: message || 'Error while creating account',
+      title: message,
       color: 'error'
     });
   } finally {

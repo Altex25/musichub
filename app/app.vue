@@ -1,12 +1,5 @@
 <script setup lang="ts">
-type Album = {
-  id: string;
-  title: string;
-  artist: string;
-  date?: string;
-  coverUrl?: string;
-  hasCoverError?: boolean;
-};
+import type {Album} from '~/utils/album';
 
 useHead({
   meta: [
@@ -21,7 +14,7 @@ useHead({
 })
 
 const title = 'MusicHub'
-const description = ''
+const description = 'Discover, rate and share your favourite albums. Join MusicHub to explore music and see what others think.'
 
 useSeoMeta({
   title,
@@ -79,31 +72,9 @@ const handleSignOut = async () => {
   }
 }
 
-const normalizeFirstReleaseDate = (date?: string) => {
-  if (!date) {
-    return undefined;
-  }
-
-  const trimmedDate = date.trim();
-
-  if (/^\d{4}$/.test(trimmedDate)) {
-    return `${trimmedDate}-01-01`;
-  }
-
-  if (/^\d{4}-\d{2}$/.test(trimmedDate)) {
-    return `${trimmedDate}-01`;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-    return trimmedDate;
-  }
-
-  return trimmedDate || undefined;
-};
-
-
 const openAlbumDetails = async (album: Album) => {
-  await $fetch('/api/musicbrainz/album', {
+  // Fire-and-forget: save album to DB for caching, but don't block navigation
+  $fetch('/api/musicbrainz/album', {
     method: 'POST',
     body: {
       id: album.id,
@@ -114,7 +85,7 @@ const openAlbumDetails = async (album: Album) => {
       coverUrl: album.coverUrl,
       raw: album
     }
-  });
+  }).catch(() => {});
 
   searchQuery.value = '';
   searchResults.value = [];

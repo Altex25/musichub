@@ -2,14 +2,6 @@
 import * as z from "zod";
 import type {AuthFormField, FormSubmitEvent} from "#ui/types";
 
-type ApiErrorData = {
-  statusMessage?: string
-}
-
-function hasApiErrorData(error: unknown): error is { data?: ApiErrorData } {
-  return typeof error === 'object' && error !== null && 'data' in error
-}
-
 const toast = useToast();
 const loading = ref(false);
 const supabase = useSupabaseClient();
@@ -42,19 +34,20 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   loading.value = true;
 
   try {
-    let identifier = payload.data.identifier.trim();
+    const session = await $fetch<{ access_token: string; refresh_token: string }>(
+        '/api/auth/login-username',
+        {
+          method: 'POST',
+          body: {
+            identifier: payload.data.identifier.trim(),
+            password: payload.data.password
+          }
+        }
+    );
 
-    if (!identifier.includes('@')) {
-      const res = await $fetch<{ email: string }>('/api/auth/resolve-username', {
-        method: 'POST',
-        body: {username: identifier}
-      });
-      identifier = res.email;
-    }
-
-    const {error} = await supabase.auth.signInWithPassword({
-      email: identifier,
-      password: payload.data.password
+    const {error} = await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
     });
 
     if (error) {
@@ -67,15 +60,9 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     });
 
     await navigateTo('/')
-  } catch (err: unknown) {
-    const defaultMessage = 'Username/email or password incorrect';
-
-    const message = err instanceof Error
-        ? err.message || defaultMessage
-        : defaultMessage;
-
+  } catch {
     toast.add({
-      title: message,
+      title: 'Username/email or password incorrect',
       color: 'error'
     });
   } finally {

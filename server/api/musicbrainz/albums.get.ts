@@ -8,6 +8,7 @@ type MusicBrainzRelease = {
 
 type MusicBrainzResponse = {
     releases?: MusicBrainzRelease[];
+    count?: number;
 };
 
 type AlbumResult = {
@@ -44,59 +45,38 @@ export default defineEventHandler(async (event) => {
     const releases = data.releases ?? [];
 
     // Map to intermediate structure with a simple relevance score
-    const albumsWithScore = await Promise.all(
-        releases.map(async (release) => {
-            const coverUrl = `https://coverartarchive.org/release/${release.id}/front-250`;
+    const albumsWithScore = releases.map((release) => {
+        const coverUrl = `https://coverartarchive.org/release/${release.id}/front-250`;
+        const title = release.title ?? '';
+        const normalizedTitle = title.toLowerCase();
+        const normalizedQuery = query.toLowerCase();
 
-            let finalCoverUrl: string | null = null;
+        let score = 0;
+        if (normalizedTitle === normalizedQuery) {
+            score += 3;
+        } else if (normalizedTitle.includes(normalizedQuery)) {
+            score += 1;
+        }
 
-            try {
-                await $fetch.raw(coverUrl, {
-                    method: 'HEAD',
-                    headers: {
-                        'User-Agent': 'MusicHub/1.0.0 (alexandre.py@ynov.com)'
-                    }
-                });
-                finalCoverUrl = coverUrl;
-            } catch {
-                finalCoverUrl = null;
-            }
-
-            const title = release.title ?? '';
-            const normalizedTitle = title.toLowerCase();
-            const normalizedQuery = query.toLowerCase();
-
-            let score = 0;
-            if (normalizedTitle === normalizedQuery) {
-                score += 3;
-            } else if (normalizedTitle.includes(normalizedQuery)) {
-                score += 1;
-            }
-
-            if (finalCoverUrl) {
-                score += 1;
-            }
-
-            return {
-                score,
-                album: {
-                    id: release.id,
-                    title,
-                    artist: release['artist-credit']
-                        ?.map((a) => a.name)
-                        .filter(Boolean)
-                        .join(', ') || 'Unknown artist',
-                    date: release.date,
-                    coverUrl: finalCoverUrl ?? ''
-                } as AlbumResult
-            };
-        })
-    );
+        return {
+            score,
+            album: {
+                id: release.id,
+                title,
+                artist: release['artist-credit']
+                    ?.map((a) => a.name)
+                    .filter(Boolean)
+                    .join(', ') || 'Unknown artist',
+                date: release.date,
+                coverUrl
+            } as AlbumResult
+        };
+    });
 
     // Sort by score (highest first) while preserving original order for ties
     albumsWithScore.sort((a, b) => b.score - a.score);
 
     const albums = albumsWithScore.map((entry) => entry.album);
 
-    return {albums};
+    return {albums, total: data.count ?? 0};
 });

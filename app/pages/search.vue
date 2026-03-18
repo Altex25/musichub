@@ -1,12 +1,5 @@
 <script setup lang="ts">
-type Album = {
-  id: string;
-  title: string;
-  artist: string;
-  date?: string;
-  coverUrl?: string;
-  hasCoverError?: boolean;
-};
+import type {Album} from '~/utils/album';
 
 const route = useRoute();
 
@@ -17,34 +10,12 @@ const searchQuery = computed(() => {
 
 const page = ref(1);
 
-const normalizeFirstReleaseDate = (date?: string) => {
-  if (!date) {
-    return undefined;
-  }
-
-  const trimmedDate = date.trim();
-
-  if (/^\d{4}$/.test(trimmedDate)) {
-    return `${trimmedDate}-01-01`;
-  }
-
-  if (/^\d{4}-\d{2}$/.test(trimmedDate)) {
-    return `${trimmedDate}-01`;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
-    return trimmedDate;
-  }
-
-  return trimmedDate || undefined;
-};
-
 const {data, pending, error} = await useAsyncData(
     () => `search-albums-${searchQuery.value}-page-${page.value}`,
     async () => {
       const query = searchQuery.value.trim();
 
-      return await $fetch<{ albums: Album[] }>('/api/musicbrainz/albums', {
+      return await $fetch<{ albums: Album[]; total: number }>('/api/musicbrainz/albums', {
         query: {
           q: query,
           page: page.value
@@ -57,9 +28,10 @@ const {data, pending, error} = await useAsyncData(
 );
 
 const albums = computed<Album[]>(() => data.value?.albums ?? []);
+const total = computed(() => data.value?.total ?? 0);
 
 const hasPreviousPage = computed(() => page.value > 1);
-const hasNextPage = computed(() => albums.value.length === 10);
+const hasNextPage = computed(() => page.value * 10 < total.value);
 
 const handleCoverError = (albumId: string) => {
   const album = albums.value.find((album) => album.id === albumId);
@@ -69,7 +41,8 @@ const handleCoverError = (albumId: string) => {
 };
 
 const openAlbumDetails = async (album: Album) => {
-  await $fetch('/api/musicbrainz/album', {
+  // Fire-and-forget: save album to DB for caching, but don't block navigation
+  $fetch('/api/musicbrainz/album', {
     method: 'POST',
     body: {
       id: album.id,
@@ -80,7 +53,7 @@ const openAlbumDetails = async (album: Album) => {
       coverUrl: album.coverUrl,
       raw: album
     }
-  });
+  }).catch(() => {});
 
   await navigateTo({
     path: '/album',

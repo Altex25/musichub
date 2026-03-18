@@ -16,7 +16,7 @@ const supabase = useSupabaseClient();
 const toast = useToast();
 const userId = computed(() => user.value?.sub);
 
-const {data: profile, error: profileError} = await useAsyncData('profile', async () => {
+const {data: profile, error: profileError} = await useAsyncData(() => `profile-${userId.value}`, async () => {
   if (!userId.value) {
     await navigateTo('/auth/login');
     return null;
@@ -28,14 +28,10 @@ const {data: profile, error: profileError} = await useAsyncData('profile', async
       .eq('user_id', userId.value)
       .maybeSingle();
 
-  if (error) {
-    console.error(error);
-  }
-
   return data;
 });
 
-const {data: ratings, error: ratingsError} = await useAsyncData('ratings', async () => {
+const {data: ratings, error: ratingsError} = await useAsyncData(() => `ratings-${userId.value}`, async () => {
   if (!userId.value) {
     return [];
   }
@@ -57,7 +53,6 @@ const {data: ratings, error: ratingsError} = await useAsyncData('ratings', async
       .order('created_at', {ascending: false});
 
   if (error) {
-    console.error(error);
     return [];
   }
 
@@ -86,9 +81,8 @@ const updateRatingFromProfile = async (rating: Rating, newRating: number) => {
       color: 'success',
       icon: 'i-heroicons-star-20-solid'
     });
-  } catch (error) {
+  } catch {
     rating.rating = previousRating;
-    console.error('Error updating rating from profile:', error);
     toast.add({
       title: 'Error updating rating',
       color: 'error',

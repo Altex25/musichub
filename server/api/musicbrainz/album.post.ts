@@ -1,4 +1,4 @@
-import {serverSupabaseClient} from "#supabase/server";
+import {serverSupabaseServiceRole} from "#supabase/server";
 
 export default defineEventHandler(async (event) => {
     const body = await readBody(event)
@@ -17,7 +17,10 @@ export default defineEventHandler(async (event) => {
             statusMessage: 'Missing required fields'
         });
     }
-    const supabase = await serverSupabaseClient(event);
+
+    // Use service role to allow upsert regardless of auth state.
+    // Album metadata from MusicBrainz is public data — no user data involved.
+    const supabase = serverSupabaseServiceRole(event);
 
     const {data, error} = await supabase
         .from('albums')
@@ -26,7 +29,7 @@ export default defineEventHandler(async (event) => {
                 id,
                 source,
                 title,
-                artist: artist,
+                artist,
                 first_release_date: firstReleaseDate,
                 cover_url: coverUrl,
                 raw,

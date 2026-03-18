@@ -19,7 +19,7 @@ export default defineNuxtConfig({
         types: '~/types/database.types.ts',
         redirectOptions: {
             // pages accessibles sans être connecté
-            exclude: ['/', '/auth/login', '/auth/register'],
+            exclude: ['/', '/search', '/search/**', '/album', '/album/**', '/auth/login', '/auth/register', '/confirm'],
             login: "/auth/login",
             callback: "/confirm"
         }
