@@ -86,30 +86,35 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-    <UCard class="w-full max-w-md">
-      <template #header>
-        <h1 class="text-2xl font-bold">
-          Connexion
-        </h1>
-        <p class="text-sm text-gray-500 mt-1">
-          Connect with your username or email.
-        </p>
-      </template>
+  <div class="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
+    <div class="w-full max-w-sm">
+      <div class="mb-8 text-center">
+        <NuxtLink to="/" class="inline-flex items-center gap-2 mb-6">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 dark:bg-primary-500">
+            <UIcon name="i-lucide-music" class="h-5 w-5 text-white" />
+          </div>
+          <span class="text-lg font-bold text-zinc-900 dark:text-white">MusicHub</span>
+        </NuxtLink>
+        <h1 class="text-2xl font-bold text-zinc-900 dark:text-white">Welcome back</h1>
+        <p class="mt-1 text-sm text-zinc-500">Sign in to your account</p>
+      </div>
 
-      <UAuthForm
-          :schema="schema"
-          title="Connexion"
-          description="Enter your information to connect"
-          icon="i-lucide-log-in"
-          :fields="fields"
-          :loading="loading"
-          @submit="onSubmit">
-        <template #description>
-          Don't have an account ?
-          <ULink to="/auth/register" class="text-primary hover:underline">Create one</ULink>
-        </template>
-      </UAuthForm>
-    </UCard>
+      <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-sm">
+        <UAuthForm
+            :schema="schema"
+            :fields="fields"
+            :loading="loading"
+            submit-label="Sign in"
+            @submit="onSubmit"
+        >
+          <template #description>
+            <span class="text-zinc-500 text-sm">
+              Don't have an account?
+              <ULink to="/auth/register" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">Create one</ULink>
+            </span>
+          </template>
+        </UAuthForm>
+      </div>
+    </div>
   </div>
 </template>

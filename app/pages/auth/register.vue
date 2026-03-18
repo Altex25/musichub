@@ -95,30 +95,34 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-    <UCard class="w-full max-w-md">
-      <template #header>
-        <h1 class="text-2xl font-bold">
-          Create an account
-        </h1>
-        <p class="text-sm text-gray-500 mt-1">
-          Join MusicHub and share your music taste with the world.
-        </p>
-      </template>
+  <div class="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
+    <div class="w-full max-w-sm">
+      <div class="mb-8 text-center">
+        <NuxtLink to="/" class="inline-flex items-center gap-2 mb-6">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 dark:bg-primary-500">
+            <UIcon name="i-lucide-music" class="h-5 w-5 text-white" />
+          </div>
+          <span class="text-lg font-bold text-zinc-900 dark:text-white">MusicHub</span>
+        </NuxtLink>
+        <h1 class="text-2xl font-bold text-zinc-900 dark:text-white">Create an account</h1>
+        <p class="mt-1 text-sm text-zinc-500">Join MusicHub and share your music taste</p>
+      </div>
 
-      <UAuthForm
-          :schema="schema"
-          title="Create an account"
-          description="Enter your information to create an account"
-          icon="i-lucide-user"
-          :fields="fields"
-          @submit="onSubmit"
-      >
-        <template #description>
-          Already have an account ?
-          <ULink to="/auth/login" class="text-primary hover:underline">Connect</ULink>
-        </template>
-      </UAuthForm>
-    </UCard>
+      <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-sm">
+        <UAuthForm
+            :schema="schema"
+            :fields="fields"
+            submit-label="Create account"
+            @submit="onSubmit"
+        >
+          <template #description>
+            <span class="text-zinc-500 text-sm">
+              Already have an account?
+              <ULink to="/auth/login" class="font-medium text-primary-600 dark:text-primary-400 hover:underline">Sign in</ULink>
+            </span>
+          </template>
+        </UAuthForm>
+      </div>
+    </div>
   </div>
 </template>

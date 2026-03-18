@@ -175,18 +175,22 @@ onBeforeUnmount(() => {
 
 <template>
   <UApp>
-    <UHeader>
+    <UHeader class="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
       <template #left>
-        <div class="flex w-full items-center gap-4">
+        <div class="flex w-full items-center gap-6">
           <NuxtLink
               to="/"
-              class="hidden cursor-pointer text-sm font-semibold sm:inline-flex items-center gap-1 text-gray-100 hover:text-emerald-300 transition-colors"
+              class="hidden sm:inline-flex items-center gap-2 shrink-0 group"
           >
-            <UIcon name="i-lucide-music" class="h-4 w-4" />
-            <span>MusicHub</span>
+            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-600 dark:bg-primary-500">
+              <UIcon name="i-lucide-music" class="h-4 w-4 text-white" />
+            </div>
+            <span class="text-sm font-bold tracking-tight text-zinc-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+              MusicHub
+            </span>
           </NuxtLink>
 
-          <div class="w-full max-w-xs relative">
+          <div class="flex-1 max-w-lg relative">
             <form @submit.prevent="handleSearchSubmit">
               <UInput
                   v-model="searchQuery"
@@ -194,109 +198,119 @@ onBeforeUnmount(() => {
                   icon="i-lucide-search"
                   placeholder="Search for an album..."
                   autocomplete="off"
+                  size="md"
                   @keydown.esc="clearSearch"
               />
             </form>
             <div
                 v-if="showSuggestions && searchQuery.trim().length > 2"
-                class="absolute z-50 mt-2 w-full rounded-md border border-default bg-default shadow-lg"
+                class="absolute z-50 mt-1.5 w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden"
             >
               <div
                   v-if="isSearching"
-                  class="p-3 text-sm text-gray-500"
+                  class="flex items-center gap-2 px-4 py-3 text-sm text-zinc-500"
               >
+                <UIcon name="i-lucide-loader-2" class="h-3.5 w-3.5 animate-spin" />
                 Searching...
               </div>
 
-              <ul v-else-if="searchResults.length" class="overflow-auto">
+              <ul v-else-if="searchResults.length">
                 <li
                     v-for="album in searchResults.slice(0, 3)"
                     :key="album.id"
-                    class="flex items-center gap-3 p-3 border-b border-default last:border-b-0"
+                    class="border-b border-zinc-100 dark:border-zinc-800 last:border-b-0"
                 >
                   <button
                       type="button"
-                      class="flex cursor-pointer w-full items-center gap-3 p-3 text-left hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors"
+                      class="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors cursor-pointer"
                       @click="openAlbumDetails(album)"
                   >
-                    <!-- Album cover -->
                     <img
                         v-if="album.coverUrl && !album.hasCoverError"
                         :src="album.coverUrl"
                         alt="Album cover"
-                        class="w-12 h-12 rounded object-cover bg-gray-100 shrink-0"
+                        class="h-10 w-10 rounded-md object-cover shrink-0 bg-zinc-100"
                         loading="lazy"
                         referrerpolicy="no-referrer"
                         @error="handleCoverError(album.id)"
                     >
                     <div
                         v-else
-                        class="w-12 h-12 rounded bg-gray-100 shrink-0 flex items-center justify-center text-gray-500"
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
                     >
-                      <UIcon name="i-lucide-music" class="w-5 h-5"/>
+                      <UIcon name="i-lucide-music" class="h-4 w-4" />
                     </div>
-                    <!-- Album info -->
                     <div class="min-w-0">
-                      <p class="font-medium text-sm">{{ album.title }}</p>
-                      <p class="text-xs text-gray-500 truncate">
-                        {{ album.artist }}<span v-if="album.date"> • {{ album.date }}</span>
+                      <p class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ album.title }}</p>
+                      <p class="truncate text-xs text-zinc-500">
+                        {{ album.artist }}<span v-if="album.date"> · {{ album.date }}</span>
                       </p>
                     </div>
                   </button>
                 </li>
               </ul>
 
-              <div v-else class="p-3 text-sm text-gray-500">
-                No album found for "{{ searchQuery }}"
+              <div v-else class="px-4 py-3 text-sm text-zinc-500">
+                No result for "{{ searchQuery }}"
               </div>
             </div>
           </div>
         </div>
       </template>
 
-      <!-- User part -->
       <template #right>
-        <div v-if="user" class="flex items-center gap-2">
-          <NuxtLink to="/profile">
+        <div v-if="user" class="flex items-center gap-3">
+          <NuxtLink
+              to="/profile"
+              class="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
             <UAvatar
                 :alt="user.user_metadata?.username"
-                class="cursor-pointer"
                 size="sm"
-                @click="navigateTo('/profile')"
             />
+            <div class="hidden md:flex flex-col leading-none">
+              <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ user.user_metadata?.username }}</span>
+              <span class="text-xs text-zinc-500">{{ user.email }}</span>
+            </div>
           </NuxtLink>
-          <div class="flex flex-col">
-            <span class="text-sm font-medium">{{ user.user_metadata?.username }}</span>
-            <span class="text-xs text-gray-500">{{ user.email }}</span>
-          </div>
           <UButton
               color="neutral"
               variant="ghost"
+              size="sm"
               :loading="isSigningOut"
               @click="handleSignOut"
           >
-            <UIcon name="i-lucide-log-out" class="w-4 h-4"/>
+            <UIcon name="i-lucide-log-out" class="h-4 w-4" />
           </UButton>
-          <UColorModeButton/>
+          <UColorModeButton />
         </div>
 
         <div v-else class="flex items-center gap-2">
           <UButton
               color="primary"
               variant="solid"
+              size="sm"
               to="/auth/login"
           >
-            Se connecter
+            Sign in
           </UButton>
-          <UColorModeButton/>
+          <UColorModeButton />
         </div>
       </template>
     </UHeader>
 
     <UMain>
-      <NuxtPage/>
+      <NuxtPage />
     </UMain>
 
-    <USeparator icon="i-simple-icons-nuxtdotjs"/>
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6">
+      <div class="mx-auto max-w-5xl px-4 flex items-center justify-between text-xs text-zinc-400">
+        <div class="flex items-center gap-1.5">
+          <UIcon name="i-lucide-music" class="h-3.5 w-3.5" />
+          <span class="font-medium">MusicHub</span>
+        </div>
+        <span>Powered by MusicBrainz</span>
+      </div>
+    </footer>
   </UApp>
 </template>
