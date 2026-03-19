@@ -73,12 +73,11 @@ const handleSignOut = async () => {
 }
 
 const openAlbumDetails = async (album: Album) => {
-  // Fire-and-forget: save album to DB for caching, but don't block navigation
-  $fetch('/api/musicbrainz/album', {
+  await $fetch('/api/discogs/album', {
     method: 'POST',
     body: {
       id: album.id,
-      source: 'MusicBrainz',
+      source: 'Discogs',
       title: album.title,
       artist: album.artist,
       firstReleaseDate: normalizeFirstReleaseDate(album.date),
@@ -107,7 +106,7 @@ const searchAlbums = async (query: string) => {
   try {
     const res = await $fetch<{
       albums: Array<Album>
-    }>('/api/musicbrainz/albums', {
+    }>('/api/discogs/albums', {
       query: {q: query.trim()}
     });
 
@@ -148,7 +147,7 @@ onBeforeUnmount(() => {
   <UApp>
     <UHeader class="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
       <template #left>
-        <div class="flex w-full items-center gap-6">
+        <div class="flex w-full items-center gap-2 sm:gap-6">
           <NuxtLink
               to="/"
               class="hidden sm:inline-flex items-center gap-2 shrink-0 group"
@@ -230,7 +229,7 @@ onBeforeUnmount(() => {
       </template>
 
       <template #right>
-        <div v-if="user" class="flex items-center gap-3">
+        <div v-if="user" class="flex items-center gap-1.5 sm:gap-3">
           <NuxtLink
               to="/profile"
               class="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -280,7 +279,7 @@ onBeforeUnmount(() => {
           <UIcon name="i-lucide-music" class="h-3.5 w-3.5" />
           <span class="font-medium">MusicHub</span>
         </div>
-        <span>Powered by MusicBrainz</span>
+        <span>Powered by Discogs</span>
       </div>
     </footer>
   </UApp>

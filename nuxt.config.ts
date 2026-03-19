@@ -1,6 +1,11 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
     compatibilityDate: '2025-01-15',
+
+    runtimeConfig: {
+        discogsToken: process.env.DISCOGS_TOKEN ?? ''
+    },
+
     modules: [
         '@nuxt/eslint',
         '@nuxt/ui',
@@ -19,7 +24,7 @@ export default defineNuxtConfig({
         types: '~/types/database.types.ts',
         redirectOptions: {
             // pages accessibles sans être connecté
-            exclude: ['/', '/search', '/search/**', '/album', '/album/**', '/auth/login', '/auth/register', '/confirm'],
+            exclude: ['/', '/search', '/search/**', '/album', '/album/**', '/auth/login', '/auth/register', '/confirm', '/profile/*', '/profile/**'],
             login: "/auth/login",
             callback: "/confirm"
         }

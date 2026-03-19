@@ -1,20 +1,27 @@
 import {serverSupabaseClient, serverSupabaseServiceRole} from '#supabase/server'
 import type {Database} from '~~/database.types'
+import {uuidToDiscogsId, discogsHeaders} from '~~/server/utils/discogs'
+
+type DiscogsMaster = {
+    id: number
+    title: string
+    year?: number
+    artists?: Array<{name: string; anv?: string}>
+    images?: Array<{type: string; uri: string; uri150: string}>
+}
 
 export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id')
+    const config = useRuntimeConfig()
 
     if (!id) {
-        throw createError({
-            statusCode: 400,
-            statusMessage: 'Missing album id'
-        })
+        throw createError({statusCode: 400, statusMessage: 'Missing album id'})
     }
 
     const supabase = await serverSupabaseClient<Database>(event)
     const admin = serverSupabaseServiceRole<Database>(event)
 
-    // Fetch album from DB
+    // 1. Try DB first
     const {data: album, error} = await supabase
         .from('albums')
         .select('*')
@@ -24,37 +31,39 @@ export default defineEventHandler(async (event) => {
     let albumData = album
 
     if (error || !albumData) {
-        // Fallback: album not yet in DB — fetch directly from MusicBrainz
+        // 2. Discogs fallback — decode the Discogs release ID from the UUID
+        const discogsId = uuidToDiscogsId(id)
+
+        if (discogsId === null) {
+            throw createError({statusCode: 404, statusMessage: 'Album not found'})
+        }
+
         try {
-            const release = await $fetch<{
-                id: string;
-                title: string;
-                date?: string;
-                'artist-credit'?: Array<{ name: string }>;
-            }>(`https://musicbrainz.org/ws/2/release/${id}`, {
-                query: {fmt: 'json', inc: 'artist-credits'},
-                headers: {'User-Agent': 'MusicHub/1.0.0 (alexandre.py@ynov.com)'}
-            })
+            const master = await $fetch<DiscogsMaster>(
+                `https://api.discogs.com/masters/${discogsId}`,
+                {headers: discogsHeaders(config.discogsToken)}
+            )
+
+            const primaryImage =
+                master.images?.find((img) => img.type === 'primary') ??
+                master.images?.[0]
 
             albumData = {
-                id: release.id,
-                title: release.title,
-                artist: release['artist-credit']?.map((a) => a.name).join(', ') ?? 'Unknown artist',
-                first_release_date: release.date ?? null,
-                cover_url: `https://coverartarchive.org/release/${id}/front-250`,
-                source: 'MusicBrainz',
+                id,
+                title: master.title,
+                artist: master.artists?.map((a) => a.anv || a.name).join(', ') ?? 'Unknown artist',
+                first_release_date: master.year ? String(master.year) : '',
+                cover_url: primaryImage?.uri ?? primaryImage?.uri150 ?? '',
+                source: 'Discogs',
                 raw: null,
                 created_at: null
             } as unknown as typeof album
         } catch {
-            throw createError({
-                statusCode: 404,
-                statusMessage: 'Album not found'
-            })
+            throw createError({statusCode: 404, statusMessage: 'Album not found'})
         }
     }
 
-    // Fetch stats using service role to bypass RLS
+    // 3. Fetch community stats (bypasses RLS)
     const {data: stats} = await admin
         .from('album_rating_stats')
         .select('rating_avg, rating_count')
@@ -68,7 +77,6 @@ export default defineEventHandler(async (event) => {
         ratingAvg = stats.rating_avg as number
         ratingCount = stats.rating_count as number
     } else {
-        // Fallback: compute from individual ratings + backfill album_rating_stats
         const {data: allRatings} = await admin
             .from('ratings')
             .select('rating')
@@ -79,16 +87,18 @@ export default defineEventHandler(async (event) => {
             const sum = allRatings.reduce((acc, r) => acc + (r.rating as number), 0)
             ratingAvg = sum / ratingCount
 
-            // Backfill so next visit is instant
             await admin
                 .from('album_rating_stats')
-                .upsert({
-                    album_id: id,
-                    rating_sum: sum,
-                    rating_count: ratingCount,
-                    rating_avg: ratingAvg,
-                    updated_at: new Date().toISOString()
-                }, {onConflict: 'album_id'})
+                .upsert(
+                    {
+                        album_id: id,
+                        rating_sum: sum,
+                        rating_count: ratingCount,
+                        rating_avg: ratingAvg,
+                        updated_at: new Date().toISOString()
+                    },
+                    {onConflict: 'album_id'}
+                )
         }
     }
 

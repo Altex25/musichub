@@ -13,6 +13,7 @@ type Rating = {
 
 const user = useSupabaseUser();
 const supabase = useSupabaseClient();
+const coverErrors = ref(new Set<string>())
 const toast = useToast();
 const userId = computed(() => user.value?.sub);
 
@@ -125,18 +126,18 @@ const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number
 
       <div class="grid gap-6 lg:grid-cols-[280px_1fr]">
         <!-- Sidebar -->
-        <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-6">
-          <div class="mb-6 flex flex-col items-center gap-3 text-center">
+        <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-5 sm:p-6">
+          <div class="flex lg:flex-col items-center lg:items-center gap-4 lg:gap-3 mb-4 lg:mb-6">
             <UAvatar
                 :alt="user?.user_metadata?.username || user?.email || 'User'"
                 size="2xl"
-                class="ring-2 ring-zinc-200 dark:ring-zinc-700"
+                class="ring-2 ring-zinc-200 dark:ring-zinc-700 shrink-0"
             />
-            <div>
-              <p class="text-base font-bold text-zinc-900 dark:text-white">
+            <div class="lg:text-center min-w-0">
+              <p class="text-base font-bold text-zinc-900 dark:text-white truncate">
                 {{ profile?.username || user?.user_metadata?.username || 'User' }}
               </p>
-              <p class="text-xs text-zinc-500 mt-0.5">
+              <p class="text-xs text-zinc-500 mt-0.5 truncate">
                 {{ user?.email }}
               </p>
             </div>
@@ -149,7 +150,7 @@ const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number
         </div>
 
         <!-- Ratings table -->
-        <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
+        <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 sm:p-6">
           <h2 class="mb-5 text-base font-bold tracking-tight text-zinc-900 dark:text-white">
             My ratings
           </h2>
@@ -162,14 +163,14 @@ const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number
           </div>
 
           <div v-else class="overflow-x-auto max-h-[520px] overflow-y-auto">
-            <table class="min-w-full border-collapse">
+            <table class="w-full border-collapse">
               <thead class="sticky top-0 bg-white dark:bg-zinc-950">
               <tr class="border-b border-zinc-200 dark:border-zinc-800">
-                <th class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Cover</th>
-                <th class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Album</th>
-                <th class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Artist</th>
-                <th class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Rating</th>
-                <th class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Date</th>
+                <th class="px-2 sm:px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Cover</th>
+                <th class="px-2 sm:px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Album</th>
+                <th class="hidden sm:table-cell px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Artist</th>
+                <th class="px-2 sm:px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Rating</th>
+                <th class="hidden sm:table-cell px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-zinc-400">Date</th>
               </tr>
               </thead>
               <tbody>
@@ -178,33 +179,39 @@ const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number
                   :key="rating.id"
                   class="border-b border-zinc-100 dark:border-zinc-800/60 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-colors"
               >
-                <td class="px-3 py-3">
+                <td class="px-2 sm:px-3 py-2.5 sm:py-3">
                   <img
-                      v-if="rating.albums?.cover_url"
+                      v-if="rating.albums?.cover_url && !coverErrors.has(rating.id)"
                       :src="rating.albums.cover_url"
                       :alt="rating.albums.title"
-                      class="h-12 w-12 rounded-lg object-cover cursor-pointer shadow-sm"
+                      class="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover cursor-pointer shadow-sm"
                       referrerpolicy="no-referrer"
                       @click="navigateTo({ path: '/album', query: { id: rating.albums?.id } })"
+                      @error="coverErrors.add(rating.id)"
                   >
                   <div
                       v-else
-                      class="flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-pointer"
+                      class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-pointer"
                       @click="rating.albums?.id && navigateTo({ path: '/album', query: { id: rating.albums.id } })"
                   >
-                    <UIcon name="i-lucide-disc-3" class="h-5 w-5" />
+                    <UIcon name="i-lucide-disc-3" class="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                 </td>
 
-                <td class="px-3 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  {{ rating.albums?.title || '—' }}
+                <td class="px-2 sm:px-3 py-2.5 sm:py-3">
+                  <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-[120px] sm:max-w-none">
+                    {{ rating.albums?.title || '—' }}
+                  </p>
+                  <p class="sm:hidden text-xs text-zinc-500 mt-0.5 truncate max-w-[120px]">
+                    {{ rating.albums?.artist || '—' }}
+                  </p>
                 </td>
 
-                <td class="px-3 py-3 text-sm text-zinc-500">
+                <td class="hidden sm:table-cell px-3 py-3 text-sm text-zinc-500">
                   {{ rating.albums?.artist || '—' }}
                 </td>
 
-                <td class="px-3 py-3">
+                <td class="px-2 sm:px-3 py-2.5 sm:py-3">
                   <div class="flex items-center gap-0.5">
                     <span
                         v-for="value in 5"
@@ -222,11 +229,11 @@ const handleStarClickProfile = (rating: Rating, event: MouseEvent, value: number
                           :style="value <= getRowDisplayedRating(rating) ? {} : { clipPath: 'inset(0 50% 0 0)' }"
                       />
                     </span>
-                    <span class="ml-1.5 text-xs text-zinc-400">{{ getRowDisplayedRating(rating).toFixed(1) }}</span>
+                    <span class="ml-1 text-xs text-zinc-400">{{ getRowDisplayedRating(rating).toFixed(1) }}</span>
                   </div>
                 </td>
 
-                <td class="px-3 py-3 text-xs text-zinc-400">
+                <td class="hidden sm:table-cell px-3 py-3 text-xs text-zinc-400 whitespace-nowrap">
                   {{ new Date(rating.created_at).toLocaleDateString('fr-FR') }}
                 </td>
               </tr>

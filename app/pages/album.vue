@@ -29,6 +29,8 @@ const averageRating = ref<number | null>(null);
 const ratingsCount = ref<number>(0);
 const displayedRating = computed(() => hoveredRating.value ?? selectedRating.value ?? 0);
 
+const hasCoverError = ref(false)
+
 const getAverageStarStyle = (value: number, avg: number) => {
   if (avg >= value) return {};
   const fraction = avg - (value - 1);
@@ -127,7 +129,7 @@ if (user.value?.sub && albumId.value) {
 
 <template>
   <div class="min-h-[calc(100vh-8rem)] bg-zinc-50 dark:bg-zinc-950">
-    <div class="mx-auto max-w-4xl px-4 py-10">
+    <div class="mx-auto max-w-4xl px-4 py-6 sm:py-10">
 
       <div v-if="!albumId" class="flex flex-col items-center justify-center py-24 text-center">
         <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -157,15 +159,16 @@ if (user.value?.sub && albumId.value) {
         <div class="flex justify-center md:justify-start">
           <div class="relative">
             <img
-                v-if="album.cover_url"
+                v-if="album.cover_url && !hasCoverError"
                 :src="album.cover_url"
                 :alt="album.title"
-                class="h-60 w-60 rounded-2xl object-cover shadow-xl"
+                class="h-44 w-44 sm:h-60 sm:w-60 rounded-2xl object-cover shadow-xl"
                 referrerpolicy="no-referrer"
+                @error="hasCoverError = true"
             >
             <div
                 v-else
-                class="flex h-60 w-60 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-inner"
+                class="flex h-44 w-44 sm:h-60 sm:w-60 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800 shadow-inner"
             >
               <UIcon name="i-lucide-disc-3" class="h-12 w-12 text-zinc-300 dark:text-zinc-600" />
             </div>

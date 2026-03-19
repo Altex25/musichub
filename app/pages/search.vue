@@ -15,7 +15,7 @@ const {data, pending, error} = await useAsyncData(
     async () => {
       const query = searchQuery.value.trim();
 
-      return await $fetch<{ albums: Album[]; total: number }>('/api/musicbrainz/albums', {
+      return await $fetch<{ albums: Album[]; total: number }>('/api/discogs/albums', {
         query: {
           q: query,
           page: page.value
@@ -41,12 +41,12 @@ const handleCoverError = (albumId: string) => {
 };
 
 const openAlbumDetails = async (album: Album) => {
-  // Fire-and-forget: save album to DB for caching, but don't block navigation
-  $fetch('/api/musicbrainz/album', {
+  // Await the DB save so the album page finds data in DB and skips the Discogs API call
+  await $fetch('/api/discogs/album', {
     method: 'POST',
     body: {
       id: album.id,
-      source: 'MusicBrainz',
+      source: 'Discogs',
       title: album.title,
       artist: album.artist,
       firstReleaseDate: normalizeFirstReleaseDate(album.date),

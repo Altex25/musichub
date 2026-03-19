@@ -86,7 +86,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         <p class="mt-1 text-sm text-zinc-500">Sign in to your account</p>
       </div>
 
-      <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-sm">
+      <div class="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-8 shadow-sm">
         <UAuthForm
             :schema="schema"
             :fields="fields"
