@@ -115,16 +115,21 @@ const getStarFillStyle = (value: number, rating: number) => {
           @touchend.passive="isHovered = false"
       >
         <template v-for="set in 2" :key="set">
-          <NuxtLink
+          <div
               v-for="(entry, i) in latestRatings"
               :key="`${set}-${i}`"
-              :to="entry.albums?.id ? { path: '/album', query: { id: entry.albums.id } } : '/'"
               :aria-hidden="set === 2 ? 'true' : undefined"
-              :tabindex="set === 2 ? -1 : undefined"
-              class="carousel-item group shrink-0 cursor-pointer"
+              class="carousel-item group shrink-0"
           >
-            <!-- Cover -->
-            <div class="relative mb-3 overflow-hidden rounded-xl shadow-sm">
+            <!-- Album link (zone principale de la carte) -->
+            <NuxtLink
+                :to="entry.albums?.id ? { path: '/album', query: { id: entry.albums.id } } : '/'"
+                :aria-hidden="set === 2 ? 'true' : undefined"
+                :tabindex="set === 2 ? -1 : undefined"
+                class="block cursor-pointer"
+            >
+              <!-- Cover -->
+              <div class="relative mb-3 overflow-hidden rounded-xl shadow-sm">
                 <img
                     v-if="entry.albums?.cover_url && !coverErrors.has(entry.id)"
                     :src="entry.albums.cover_url"
@@ -138,42 +143,49 @@ const getStarFillStyle = (value: number, rating: number) => {
                     v-else
                     class="flex h-36 w-36 sm:h-40 sm:w-40 items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
                 >
-                <UIcon name="i-lucide-disc-3" class="h-10 w-10" />
+                  <UIcon name="i-lucide-disc-3" class="h-10 w-10" />
+                </div>
+
+                <!-- Rating badge -->
+                <div class="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-black/65 px-1.5 py-0.5 backdrop-blur-sm">
+                  <UIcon name="i-heroicons-star-20-solid" class="h-3 w-3 text-amber-400" />
+                  <span class="text-xs font-semibold text-white">{{ entry.rating.toFixed(1) }}</span>
+                </div>
               </div>
 
-              <!-- Rating badge -->
-              <div class="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-black/65 px-1.5 py-0.5 backdrop-blur-sm">
-                <UIcon name="i-heroicons-star-20-solid" class="h-3 w-3 text-amber-400" />
-                <span class="text-xs font-semibold text-white">{{ entry.rating.toFixed(1) }}</span>
+              <!-- Info -->
+              <p class="w-36 sm:w-40 truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                {{ entry.albums?.title || '—' }}
+              </p>
+              <p class="w-36 sm:w-40 truncate text-xs text-zinc-500 mt-0.5">
+                {{ entry.albums?.artist || '—' }}
+              </p>
+
+              <!-- Stars -->
+              <div class="flex items-center gap-0.5 mt-1.5">
+                <span v-for="value in 5" :key="value" class="relative inline-flex h-3 w-3">
+                  <UIcon name="i-heroicons-star-20-solid" class="h-3 w-3 text-zinc-200 dark:text-zinc-700" />
+                  <UIcon
+                      v-if="entry.rating > 0 && value - 1 < entry.rating && getStarFillStyle(value, entry.rating) !== null"
+                      name="i-heroicons-star-20-solid"
+                      class="absolute inset-0 h-3 w-3 text-amber-400"
+                      :style="getStarFillStyle(value, entry.rating) ?? {}"
+                  />
+                </span>
               </div>
-            </div>
+            </NuxtLink>
 
-            <!-- Info -->
-            <p class="w-36 sm:w-40 truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-              {{ entry.albums?.title || '—' }}
-            </p>
-            <p class="w-36 sm:w-40 truncate text-xs text-zinc-500 mt-0.5">
-              {{ entry.albums?.artist || '—' }}
-            </p>
-
-            <!-- Stars -->
-            <div class="flex items-center gap-0.5 mt-1.5">
-              <span v-for="value in 5" :key="value" class="relative inline-flex h-3 w-3">
-                <UIcon name="i-heroicons-star-20-solid" class="h-3 w-3 text-zinc-200 dark:text-zinc-700" />
-                <UIcon
-                    v-if="entry.rating > 0 && value - 1 < entry.rating && getStarFillStyle(value, entry.rating) !== null"
-                    name="i-heroicons-star-20-solid"
-                    class="absolute inset-0 h-3 w-3 text-amber-400"
-                    :style="getStarFillStyle(value, entry.rating) ?? {}"
-                />
-              </span>
-            </div>
-
-            <!-- Rated by -->
-            <p v-if="entry.profiles?.username" class="mt-1 w-36 sm:w-40 truncate text-xs text-zinc-400">
+            <!-- Rated by (cliquable vers /profile/[username]) -->
+            <NuxtLink
+                v-if="entry.profiles?.username"
+                :to="`/profile/${entry.profiles.username}`"
+                :aria-hidden="set === 2 ? 'true' : undefined"
+                :tabindex="set === 2 ? -1 : undefined"
+                class="mt-1 block w-36 sm:w-40 truncate text-xs text-zinc-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+            >
               @{{ entry.profiles.username }}
-            </p>
-          </NuxtLink>
+            </NuxtLink>
+          </div>
         </template>
       </div>
       </div>
