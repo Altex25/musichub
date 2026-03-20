@@ -17,13 +17,13 @@ const coverErrors = ref(new Set<string>())
 const toast = useToast();
 const userId = computed(() => user.value?.sub);
 
-const {data: profile, error: profileError} = await useAsyncData(() => `profile-${userId.value}`, async () => {
+const {data: profile, error: _profileError} = await useAsyncData(() => `profile-${userId.value}`, async () => {
   if (!userId.value) {
     await navigateTo('/auth/login');
     return null;
   }
 
-  const {data, error} = await supabase
+  const {data, error: _error} = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', userId.value)
@@ -32,12 +32,12 @@ const {data: profile, error: profileError} = await useAsyncData(() => `profile-$
   return data;
 });
 
-const {data: ratings, error: ratingsError} = await useAsyncData(() => `ratings-${userId.value}`, async () => {
+const {data: ratings, error: _ratingsError} = await useAsyncData(() => `ratings-${userId.value}`, async () => {
   if (!userId.value) {
     return [];
   }
 
-  const {data, error} = await supabase
+  const {data, error: _error} = await supabase
       .from('ratings')
       .select(`
       id,
@@ -53,7 +53,7 @@ const {data: ratings, error: ratingsError} = await useAsyncData(() => `ratings-$
       .eq('user_id', userId.value)
       .order('created_at', {ascending: false});
 
-  if (error) {
+  if (_error) {
     return [];
   }
 

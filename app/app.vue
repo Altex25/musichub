@@ -37,7 +37,7 @@ const isSearching = ref(false);
 const showSuggestions = ref(true);
 let searchTimeout: string | number | NodeJS.Timeout | undefined;
 
-const isSearchPage = computed(() => route.path === '/search');
+const _isSearchPage = computed(() => route.path === '/search');
 
 const handleCoverError = (albumId: string) => {
   const album = searchResults.value.find((album) => album.id === albumId);

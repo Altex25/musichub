@@ -31,6 +31,13 @@ const displayedRating = computed(() => hoveredRating.value ?? selectedRating.val
 
 const hasCoverError = ref(false)
 
+const resetRatingState = () => {
+  selectedRating.value = null
+  hoveredRating.value = null
+  existingRating.value = null
+  ratingMessage.value = ''
+}
+
 const getAverageStarStyle = (value: number, avg: number) => {
   if (avg >= value) return {};
   const fraction = avg - (value - 1);
@@ -104,27 +111,61 @@ const handleStarClick = (event: MouseEvent, value: number) => {
   selectedRating.value = hoveredRating.value ?? getStarValue(event, value);
 };
 
-// Initialise community stats from API response (server-side, bypasses RLS)
-if (album.value?.rating_avg != null && (album.value.rating_count ?? 0) > 0) {
-  averageRating.value = album.value.rating_avg;
-  ratingsCount.value = album.value.rating_count ?? 0;
-}
+watch(
+  () => album.value,
+  (a) => {
+    if (a?.rating_avg != null && (a.rating_count ?? 0) > 0) {
+      averageRating.value = a.rating_avg
+      ratingsCount.value = a.rating_count ?? 0
+      return
+    }
+    averageRating.value = null
+    ratingsCount.value = 0
+  },
+  {immediate: true}
+)
 
-// Fetch the current user's existing rating
-if (user.value?.sub && albumId.value) {
-  const {data: existingRatings} = await supabase
+// Quand on change d'album (query param) on remet le state de rating à zéro,
+// puis on recharge la note existante de l'utilisateur courant.
+const userId = computed(() => user.value?.sub)
+let existingRatingRequestSeq = 0
+
+const fetchExistingRating = async () => {
+  if (!userId.value || !albumId.value) return
+
+  const seq = ++existingRatingRequestSeq
+
+  try {
+    const {data: existingRatings} = await supabase
       .from('ratings')
       .select('rating')
       .eq('album_id', albumId.value)
-      .eq('user_id', user.value.sub)
+      .eq('user_id', userId.value)
       .order('created_at', {ascending: false})
-      .limit(1);
+      .limit(1)
 
-  if (existingRatings && existingRatings.length > 0 && typeof existingRatings[0]?.rating === 'number') {
-    existingRating.value = existingRatings[0].rating as number;
-    selectedRating.value = existingRating.value;
+    // Evite d'écraser le state si l'utilisateur a navigué vers un autre album entre temps.
+    if (seq !== existingRatingRequestSeq) return
+
+    if (existingRatings && existingRatings.length > 0 && typeof existingRatings[0]?.rating === 'number') {
+      existingRating.value = existingRatings[0].rating as number
+      selectedRating.value = existingRating.value
+    }
+  } catch {
+    // Ne bloque pas l'UI si la lookup échoue : on laisse la note vide.
   }
 }
+
+watch(
+  [albumId, userId],
+  async () => {
+    // Reset immédiat pour éviter d'afficher l'ancienne note pendant le chargement.
+    resetRatingState()
+    hasCoverError.value = false
+    await fetchExistingRating()
+  },
+  {immediate: true}
+)
 </script>
 
 <template>
